@@ -57,14 +57,25 @@ isZero n = un n (\b -> false) true
 
 -- to define the Y combinator in haskell, we need iso-recursive types.
 -- See http://jozefg.bitbucket.org/posts/2013-11-09-iso-recursive-types.html 
-newtype Mu f = Mu { unMu :: f (Mu f) }
-newtype X' b a = X' { unX :: a -> b }
-type X a = Mu (X' a)
-unroll = unX . unMu
-roll = Mu . X'
+--newtype Mu f = Mu { unMu :: f (Mu f) }
+--newtype X' b a = X' { unX :: a -> b }
+--type X a = Mu (X' a)
+--unroll = unX . unMu
+--roll = Mu . X'
+
+--y :: (a -> a) -> a
+--y = \f -> (\x -> f (unroll x x)) $ roll (\x -> f (unroll x x))
+
+newtype Mu a = Roll { unRoll :: Mu a -> a}
+
+{-# NOINLINE fold #-}
+fold = Roll
+
+{-# NOINLINE unfold #-}
+unfold = unRoll
 
 y :: (a -> a) -> a
-y = \f -> (\x -> f (unroll x x)) $ roll (\x -> f (unroll x x))
+y = \f -> (\x -> f (unfold x x)) $ fold (\x -> f (unfold x x))
 
 divi :: Nat -> Nat -> Nat
 divi = y divi'
