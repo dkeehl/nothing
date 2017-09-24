@@ -1,35 +1,27 @@
-Church : Type
-Church = (a : Type) -> (a -> a) -> a -> a
+record Church where
+  constructor MkNat
+  natF : {a : Type} -> (a -> a) -> a -> a
 
 zero : Church
-zero = \ty => \f => \x => x
+zero = MkNat $ \_ => \x => x
 
 succ : Church -> Church
-succ n = \ty => \f => \x => f (n ty f x)
+succ n = MkNat $ \f => \x => f (natF n f x)
+
+one : Church
+one = succ zero
 
 churchToNat : Church -> Nat
-churchToNat n = n Nat S Z
+churchToNat n = natF n S Z
 
 plus : Church -> Church -> Church
-plus n m = \ty => \f => \x => n ty f (m ty f x)
+plus n m = natF m succ n
 
 mult : Church -> Church -> Church
-mult n m = \ty => \f => \x => n ty (m ty f) x
+mult n m = natF m (plus n) zero 
 
 exp : Church -> Church -> Church
-exp n m = \ty => \f => \x => m (ty -> ty) (n ty) f x
-
-Boolean : Type
-Boolean = (a : Type) -> a -> a -> a
-
-true : Boolean
-true = \_ => \x => \_ => x
-
-false : Boolean
-false = \_ => \_ => \x => x
-
-isZero : Church -> Boolean
-isZero n = n _ (\_ => false) true
+exp n m = natF m (mult n) one
 
 Product : (a : Type) -> (b : Type) -> Type
 Product a b = (ty : Type) -> (a -> b -> ty) -> ty 
@@ -43,20 +35,51 @@ first p = p _ (\x => \_ => x)
 second : Product a b -> b
 second p = p _ (\_ => \x => x)
 
-zeroP : Product (a -> a) (a -> a)
-zeroP = pair id id
+-- Define predecessor and subtraction
+zeroP : Product Church Church
+zeroP = pair zero zero 
 
-succP : {a : Type} -> (f : a -> a) -> Product (a -> a) (a -> a) -> Product (a -> a) (a -> a)
-succP f p = pair (\x => f $ first p x) (first p)
+succP : Product Church Church -> Product Church Church
+succP p = pair (succ $ first p) (first p)
 
-nWithPred : {a : Type} -> (f : a -> a) -> Church -> Product (a -> a) (a -> a) 
-nWithPred f n = n _ (succP f) zeroP
+nWithPred : Church -> Product Church Church
+nWithPred n = natF n succP zeroP
 
 pred : Church -> Church
-pred n = \_ => \f => \x => second (nWithPred f n) x
+pred = second . nWithPred
 
--- Premitive recursion
+minus : Church -> Church -> Church
+minus n m = natF m pred n
 
+-- Primitive recursion
+start : a -> Product Church a
+start x = pair zero x
+
+step : (Church -> a -> a) -> Product Church a -> Product Church a
+step f p = pair (succ $ first p) (f (succ $ first p) (second p))
+
+pr : Church -> ty -> (h : Church -> ty -> ty) -> ty
+pr n g h = second $ natF n (step h) (start g)
+
+-- Zero test
+Boolean : Type
+Boolean = {a : Type} -> a -> a -> a
+
+true : Boolean
+true = \x => \_ => x
+
+false : Boolean
+false = \_ => \x => x
+
+isZero : Church -> Boolean
+isZero n = natF n (\_ => false) true
+
+-- Search from 0 to n for the least number q that n - m * q <= 0
+div' : Church -> Church -> Church
+div' n m = pr n zero (\q => \pre => isZero (minus n $ mult m pre) pre q)
+
+div : Church -> Church -> Church
+div n m = isZero m zero (div' n m)
 
 -- General recursion
 -- Type of x in Y combinator
