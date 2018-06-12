@@ -1,3 +1,7 @@
+module Nothing
+
+%default total
+
 record Church where
   constructor MkNat
   natF : {a : Type} -> (a -> a) -> a -> a
@@ -81,6 +85,36 @@ div' n m = pr n zero (\q => \pre => isZero (minus n $ mult m pre) pre q)
 div : Church -> Church -> Church
 div n m = isZero m zero (div' n m)
 
+-- Some other data types
+Atom : Type
+Atom = (a: Type) -> a -> a
+
+atom : Atom
+atom = \_ => \x => x
+
+Sum : Type -> Type -> Type
+Sum a b = (ty: Type) -> (a -> ty) -> (b -> ty) -> ty
+
+match : (ty: Type) -> Sum a b -> (a -> ty) -> (b -> ty) -> ty
+match ty sum l r = sum ty l r
+
+Option : Type -> Type
+Option a = Sum Atom a
+
+none : Option a
+none = \_ => \l => \r => l atom
+
+some : a -> Option a
+some x = \_ => \l => \r => r x
+
+-- An example of option
+example1 : Option Church -> Church
+example1 n = match Church  -- Church indicates the returning type
+                   n
+                   (\_ => zero) -- the `none` case
+                   (\x => x)    -- the `some` case
+
+%default partial
 -- General recursion
 -- Type of x in Y combinator
 record X a where
@@ -90,5 +124,3 @@ record X a where
 y : (Lazy a -> a) -> a
 y f = (\x => f (unRoll x x)) $ Roll (\x => f (unRoll x x))
 
-main : IO ()
-main = pure ()
