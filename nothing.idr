@@ -95,6 +95,12 @@ atom = \_ => \x => x
 Sum : Type -> Type -> Type
 Sum a b = (ty: Type) -> (a -> ty) -> (b -> ty) -> ty
 
+left : a -> Sum a b
+left x = \_ => \l => \r => l x
+
+right : b -> Sum a b
+right x = \_ => \l => \r => r x
+
 match : (ty: Type) -> Sum a b -> (a -> ty) -> (b -> ty) -> ty
 match ty sum l r = sum ty l r
 
@@ -102,10 +108,10 @@ Option : Type -> Type
 Option a = Sum Atom a
 
 none : Option a
-none = \_ => \l => \r => l atom
+none = left atom
 
 some : a -> Option a
-some x = \_ => \l => \r => r x
+some = right
 
 -- An example of option
 example1 : Option Church -> Church
@@ -114,13 +120,40 @@ example1 n = match Church  -- Church indicates the returning type
                    (\_ => zero) -- the `none` case
                    (\x => x)    -- the `some` case
 
-%default partial
+-- Nat is a recursive type,
+-- `Nat = Sum Atom Nat` will not reduce during typechecking.
+namespace RecursiveType
+  record MuType (f: Type -> Type) where
+    constructor Mu
+    unMu : f (MuType f)
+
+  N : Type
+  N = MuType (Sum Atom)
+
+  partial zero : N
+  zero = Mu $ left atom
+
+  partial succ : N -> N
+  succ n = Mu $ right n
+
+  B : Type
+  B = Sum Atom Atom
+
+  true : B
+  true = left atom
+
+  false : B
+  false = right atom
+
+  partial isZero : N -> B
+  isZero n = match B (unMu n) (\_ => true) (\_ => false)
+
 -- General recursion
 -- Type of x in Y combinator
 record X a where
   constructor Roll
   unRoll : Lazy (X a -> a)
 
-y : (Lazy a -> a) -> a
+partial y : (Lazy a -> a) -> a
 y f = (\x => f (unRoll x x)) $ Roll (\x => f (unRoll x x))
 
