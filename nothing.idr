@@ -114,11 +114,11 @@ some : a -> Option a
 some = right
 
 -- An example of option
-example1 : Option Church -> Church
-example1 n = match Church  -- Church indicates the returning type
-                   n
-                   (\_ => zero) -- the `none` case
-                   (\x => x)    -- the `some` case
+unpack : (a: Type) -> Option a -> (default: a) -> a
+unpack a opt default = match a            -- a indicates the returning type
+                             opt
+                             (\_ => default) -- the `none` case
+                             (\x => x)       -- the `some` case
 
 -- Nat is a recursive type,
 -- `Nat = Sum Atom Nat` will not reduce during typechecking.
@@ -135,6 +135,10 @@ namespace RecursiveType
 
   partial succ : N -> N
   succ n = Mu $ right n
+
+  -- examples
+  partial pred : N -> N
+  pred n = match N (unMu n) (\_ => zero) (\x => x)
 
   B : Type
   B = Sum Atom Atom
